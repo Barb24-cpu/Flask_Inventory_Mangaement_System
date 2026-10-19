@@ -53,7 +53,7 @@ inventory = copy.deepcopy(INITIAL_INVENTORY)
 ALLOWED_FIELDS = {"barcode", "product_name", "brands", "ingredients_text", "price", "stock"}
 
 # Helper functions
-# ---------------------------------------------------------------------------
+
 def find_item(item_id):
     """Return the inventory item with this id, or None."""
     return next((item for item in inventory if item["id"] == item_id), None)
@@ -127,3 +127,74 @@ def search_products_by_name(name, limit=5):
     )
     response.raise_for_status()
     return [clean_product(p) for p in response.json().get("products", [])]
+
+
+    # CRUD routes
+
+@app.route("/inventory", methods=["GET"])
+def get_inventory():
+    """Fetch all items."""
+    return jsonify(inventory), 200
+ 
+ 
+@app.route("/inventory/<int:item_id>", methods=["GET"])
+def get_item(item_id):
+    """Fetch a single item."""
+    item = find_item(item_id)
+    if item is None:
+        return jsonify({"error": "Item not found"}), 404
+    return jsonify(item), 200
+ 
+ 
+@app.route("/inventory", methods=["POST"])
+def add_item():
+    """Add a new item."""
+    data = request.get_json(silent=True)
+    if not isinstance(data, dict):
+        return jsonify({"error": "Request body must be JSON"}), 400
+    error = validate_fields(data)
+    if error:
+        return jsonify({"error": error}), 400
+ 
+    item = {
+        "id": next_id(),
+        "barcode": data.get("barcode", ""),
+        "product_name": data["product_name"].strip(),
+        "brands": data.get("brands", ""),
+        "ingredients_text": data.get("ingredients_text", ""),
+        "price": data.get("price", 0.0),
+        "stock": data.get("stock", 0),
+    }
+    inventory.append(item)
+    return jsonify(item), 201
+ 
+ 
+@app.route("/inventory/<int:item_id>", methods=["PATCH"])
+def update_item(item_id):
+    """Update fields (e.g. price or stock) of an existing item."""
+    item = find_item(item_id)
+    if item is None:
+        return jsonify({"error": "Item not found"}), 404
+    data = request.get_json(silent=True)
+    if not isinstance(data, dict) or not data:
+        return jsonify({"error": "Request body must be non-empty JSON"}), 400
+    error = validate_fields(data, partial=True)
+    if error:
+        return jsonify({"error": error}), 400
+ 
+    for key, value in data.items():
+        if key in ALLOWED_FIELDS:  # ignore unknown fields and never allow id changes
+            item[key] = value.strip() if isinstance(value, str) else value
+    return jsonify(item), 200
+ 
+ 
+@app.route("/inventory/<int:item_id>", methods=["DELETE"])
+def delete_item(item_id):
+    """Remove an item."""
+    item = find_item(item_id)
+    if item is None:
+        return jsonify({"error": "Item not found"}), 404
+    inventory.remove(item)
+    return jsonify({"message": f"Item {item_id} deleted"}), 200
+ 
+ 
