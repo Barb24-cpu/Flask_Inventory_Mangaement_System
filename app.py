@@ -198,3 +198,58 @@ def delete_item(item_id):
     return jsonify({"message": f"Item {item_id} deleted"}), 200
  
  
+ # External API helper routes
+
+@app.route("/external/barcode/<barcode>", methods=["GET"])
+def external_by_barcode(barcode):
+    """Look up a product on OpenFoodFacts by barcode (does not change inventory)."""
+    try:
+        product = fetch_product_by_barcode(barcode)
+    except requests.RequestException:
+        return jsonify({"error": "External API unavailable"}), 502
+    if product is None:
+        return jsonify({"error": "Product not found on OpenFoodFacts"}), 404
+    return jsonify(product), 200
+ 
+ 
+@app.route("/external/search", methods=["GET"])
+def external_search():
+    """Search OpenFoodFacts by name: /external/search?name=nutella"""
+    name = request.args.get("name", "").strip()
+    if not name:
+        return jsonify({"error": "name query parameter is required"}), 400
+    try:
+        products = search_products_by_name(name)
+    except requests.RequestException:
+        return jsonify({"error": "External API unavailable"}), 502
+    return jsonify(products), 200
+ 
+ 
+@app.route("/inventory/import", methods=["POST"])
+def import_item():
+    """Fetch a product from OpenFoodFacts by barcode and add it to inventory.
+ 
+    JSON body: {"barcode": "3017620422003", "price": 4.5, "stock": 10}
+    """
+    data = request.get_json(silent=True)
+    if not isinstance(data, dict) or not data.get("barcode"):
+        return jsonify({"error": "barcode is required"}), 400
+    error = validate_fields({k: v for k, v in data.items() if k in ("price", "stock")}, partial=True)
+    if error:
+        return jsonify({"error": error}), 400
+ 
+    try:
+        product = fetch_product_by_barcode(str(data["barcode"]))
+    except requests.RequestException:
+        return jsonify({"error": "External API unavailable"}), 502
+    if product is None:
+        return jsonify({"error": "Product not found on OpenFoodFacts"}), 404
+ 
+    item = {"id": next_id(), **product, "price": data.get("price", 0.0), "stock": data.get("stock", 0)}
+    inventory.append(item)
+    return jsonify(item), 201
+ 
+ 
+if __name__ == "__main__":
+    app.run(debug=True)  # Flask debug mode for Task 4
+ 
