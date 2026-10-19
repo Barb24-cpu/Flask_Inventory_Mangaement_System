@@ -88,4 +88,99 @@ def test_post_non_json_returns_400(client):
     assert client.post("/inventory", data="not json").status_code == 400
  
  
+ # ------------------------------- PATCH -------------------------------------
+def test_patch_updates_price_and_stock(client):
+    response = client.patch("/inventory/1", json={"price": 9.99, "stock": 3})
+    assert response.status_code == 200
+    body = response.get_json()
+    assert body["price"] == 9.99 and body["stock"] == 3
+    assert body["product_name"] == "Organic Almond Milk"  # untouched
+ 
+ 
+def test_patch_cannot_change_id(client):
+    client.patch("/inventory/1", json={"id": 50, "stock": 1})
+    assert client.get("/inventory/1").status_code == 200
+ 
+ 
+def test_patch_missing_item_returns_404(client):
+    assert client.patch("/inventory/999", json={"stock": 1}).status_code == 404
+ 
+ 
+def test_patch_invalid_stock_returns_400(client):
+    assert client.patch("/inventory/1", json={"stock": "lots"}).status_code == 400
+ 
+ 
+# ------------------------------- DELETE ------------------------------------
+def test_delete_removes_item(client):
+    assert client.delete("/inventory/2").status_code == 200
+    assert client.get("/inventory/2").status_code == 404
+ 
+ 
+def test_delete_missing_item_returns_404(client):
+    assert client.delete("/inventory/999").status_code == 404
+ 
+ 
+# ------------------------- External API (mocked) ---------------------------
+FAKE_PRODUCT = {
+    "status": 1,
+    "product": {
+        "product_name": "Nutella",
+        "brands": "Ferrero",
+        "ingredients_text": "Sugar, palm oil, hazelnuts",
+    },
+}
+ 
+ 
+@patch("app.requests.get")
+def test_external_barcode_found(mock_get, client):
+    mock_get.return_value = mock_response(FAKE_PRODUCT)
+    response = client.get("/external/barcode/3017620422003")
+    assert response.status_code == 200
+    assert response.get_json()["product_name"] == "Nutella"
+ 
+ 
+@patch("app.requests.get")
+def test_external_barcode_not_found(mock_get, client):
+    mock_get.return_value = mock_response({"status": 0})
+    assert client.get("/external/barcode/000").status_code == 404
+ 
+ 
+@patch("app.requests.get")
+def test_external_api_failure_returns_502(mock_get, client):
+    mock_get.side_effect = requests.ConnectionError("network down")
+    assert client.get("/external/barcode/123").status_code == 502
+ 
+ 
+@patch("app.requests.get")
+def test_external_search_by_name(mock_get, client):
+    mock_get.return_value = mock_response(
+        {"products": [{"code": "111", "product_name": "Oat Milk", "brands": "Oatly"}]}
+    )
+    response = client.get("/external/search?name=oat")
+    assert response.status_code == 200
+    assert response.get_json()[0]["barcode"] == "111"
+ 
+ 
+def test_external_search_requires_name(client):
+    assert client.get("/external/search").status_code == 400
+ 
+ 
+@patch("app.requests.get")
+def test_import_adds_api_product_to_inventory(mock_get, client):
+    mock_get.return_value = mock_response(FAKE_PRODUCT)
+    response = client.post("/inventory/import", json={"barcode": "3017620422003", "price": 4.5, "stock": 10})
+    assert response.status_code == 201
+    body = response.get_json()
+    assert body["product_name"] == "Nutella" and body["price"] == 4.5
+    assert len(client.get("/inventory").get_json()) == len(INITIAL_INVENTORY) + 1
+ 
+ 
+@patch("app.requests.get")
+def test_import_unknown_barcode_returns_404(mock_get, client):
+    mock_get.return_value = mock_response({"status": 0})
+    assert client.post("/inventory/import", json={"barcode": "000"}).status_code == 404
+ 
+ 
+def test_import_requires_barcode(client):
+    assert client.post("/inventory/import", json={}).status_code == 400
  
