@@ -5,7 +5,7 @@ Start the API first (python app.py), then run this in a second terminal (python 
 import requests
  
 API_URL = "http://127.0.0.1:5000"
-TIMEOUT = 15
+TIMEOUT = 45
  
  # Helpers
 
@@ -120,9 +120,8 @@ def update_item():
         print_item(body)
     elif status:
         show_error(body)
- 
 
- def delete_item():
+def delete_item():
     item_id = ask_int("Item ID to delete: ", minimum=1)
     status, body = api_request("DELETE", f"/inventory/{item_id}")
     if status == 200:
@@ -174,7 +173,7 @@ def find_on_api():
         print("Error: choose 'b' or 'n'.")
 
 
-        MENU = """
+MENU = """
 === Inventory Manager ===
 1. List all items
 2. View item details
@@ -184,7 +183,7 @@ def find_on_api():
 6. Find item on OpenFoodFacts
 7. Quit
 """
- 
+
 ACTIONS = {
     "1": list_items,
     "2": view_item,
@@ -193,8 +192,8 @@ ACTIONS = {
     "5": delete_item,
     "6": find_on_api,
 }
- 
- 
+
+
 def main():
     while True:
         print(MENU)
@@ -207,8 +206,7 @@ def main():
             action()
         else:
             print("Invalid option, please choose 1-7.")
- 
- 
+
+
 if __name__ == "__main__":
     main()
- 
