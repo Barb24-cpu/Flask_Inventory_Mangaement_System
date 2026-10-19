@@ -121,3 +121,57 @@ def update_item():
     elif status:
         show_error(body)
  
+
+ def delete_item():
+    item_id = ask_int("Item ID to delete: ", minimum=1)
+    status, body = api_request("DELETE", f"/inventory/{item_id}")
+    if status == 200:
+        print(body["message"])
+    elif status:
+        show_error(body)
+ 
+ 
+def find_on_api():
+    """Look a product up on OpenFoodFacts and optionally add it to inventory."""
+    choice = input("Search by (b)arcode or (n)ame? ").strip().lower()
+    if choice == "b":
+        barcode = input("Barcode: ").strip()
+        if not barcode:
+            print("Error: barcode cannot be empty.")
+            return
+        status, body = api_request("GET", f"/external/barcode/{barcode}")
+        if status != 200:
+            if status:
+                show_error(body)
+            return
+        print(f"Found: {body['product_name']} ({body['brands'] or 'no brand'})")
+        print(f"Ingredients: {body['ingredients_text'] or 'n/a'}")
+        if input("Add to inventory? (y/n): ").strip().lower() == "y":
+            payload = {"barcode": barcode, "price": ask_float("Price: "), "stock": ask_int("Stock: ")}
+            status, body = api_request("POST", "/inventory/import", json=payload)
+            if status == 201:
+                print("Added to inventory:")
+                print_item(body)
+            elif status:
+                show_error(body)
+    elif choice == "n":
+        name = input("Product name: ").strip()
+        if not name:
+            print("Error: name cannot be empty.")
+            return
+        status, body = api_request("GET", "/external/search", params={"name": name})
+        if status != 200:
+            if status:
+                show_error(body)
+            return
+        if not body:
+            print("No products found.")
+            return
+        for number, product in enumerate(body, start=1):
+            print(f"{number}. {product['product_name']} ({product['brands'] or 'no brand'}) - {product['barcode']}")
+        print("Tip: choose option 6 again and search by barcode to add one.")
+    else:
+        print("Error: choose 'b' or 'n'.")
+
+
+        
