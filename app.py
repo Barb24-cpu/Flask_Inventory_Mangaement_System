@@ -15,9 +15,9 @@ OFF_BASE_URL = "https://world.openfoodfacts.org"
 OFF_HEADERS = {"User-Agent": "InventoryManager/1.0 (student-project)"}
 OFF_TIMEOUT = 30  # seconds
 
-# ---------------------------------------------------------------------------
+
 # Mock database (resembles OpenFoodFacts product data; every item has an id)
-# ---------------------------------------------------------------------------
+
 INITIAL_INVENTORY = [
     {
         "id": 1,
@@ -52,9 +52,9 @@ inventory = copy.deepcopy(INITIAL_INVENTORY)
 ALLOWED_FIELDS = {"barcode", "product_name", "brands", "ingredients_text", "price", "stock"}
 
 
-# ---------------------------------------------------------------------------
+
 # Helper functions
-# ---------------------------------------------------------------------------
+
 def find_item(item_id):
     """Return the inventory item with this id, or None."""
     return next((item for item in inventory if item["id"] == item_id), None)
@@ -130,9 +130,9 @@ def search_products_by_name(name, limit=5):
     return [clean_product(p) for p in response.json().get("products", [])]
 
 
-# ---------------------------------------------------------------------------
+
 # CRUD routes
-# ---------------------------------------------------------------------------
+
 @app.route("/inventory", methods=["GET"])
 def get_inventory():
     """Fetch all items."""
@@ -200,9 +200,8 @@ def delete_item(item_id):
     return jsonify({"message": f"Item {item_id} deleted"}), 200
 
 
-# ---------------------------------------------------------------------------
 # External API helper routes
-# ---------------------------------------------------------------------------
+
 @app.route("/external/barcode/<barcode>", methods=["GET"])
 def external_by_barcode(barcode):
     """Look up a product on OpenFoodFacts by barcode (does not change inventory)."""
