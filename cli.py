@@ -61,3 +61,63 @@ def ask_float(prompt, minimum=0.0):
 def show_error(body):
     print(f"Error: {body.get('error', 'Something went wrong')}")
  
+
+ # Menu actions
+
+def list_items():
+    status, body = api_request("GET", "/inventory")
+    if status != 200:
+        return
+    if not body:
+        print("Inventory is empty.")
+    for item in body:
+        print_item(item)
+ 
+ 
+def view_item():
+    item_id = ask_int("Item ID: ", minimum=1)
+    status, body = api_request("GET", f"/inventory/{item_id}")
+    if status == 200:
+        for key, value in body.items():
+            print(f"  {key}: {value}")
+    elif status:
+        show_error(body)
+ 
+ 
+def add_item():
+    name = input("Product name: ").strip()
+    if not name:
+        print("Error: product name cannot be empty.")
+        return
+    payload = {
+        "product_name": name,
+        "brands": input("Brand (optional): ").strip(),
+        "barcode": input("Barcode (optional): ").strip(),
+        "price": ask_float("Price: "),
+        "stock": ask_int("Stock: "),
+    }
+    status, body = api_request("POST", "/inventory", json=payload)
+    if status == 201:
+        print("Item added:")
+        print_item(body)
+    elif status:
+        show_error(body)
+ 
+ 
+def update_item():
+    item_id = ask_int("Item ID to update: ", minimum=1)
+    choice = input("Update (p)rice or (s)tock? ").strip().lower()
+    if choice == "p":
+        payload = {"price": ask_float("New price: ")}
+    elif choice == "s":
+        payload = {"stock": ask_int("New stock level: ")}
+    else:
+        print("Error: choose 'p' or 's'.")
+        return
+    status, body = api_request("PATCH", f"/inventory/{item_id}", json=payload)
+    if status == 200:
+        print("Item updated:")
+        print_item(body)
+    elif status:
+        show_error(body)
+ 
