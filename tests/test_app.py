@@ -16,9 +16,9 @@ def client():
     app.config["TESTING"] = True
     with app.test_client() as test_client:
         yield test_client
-
-
-        def mock_response(json_data, status=200):
+ 
+ 
+def mock_response(json_data, status=200):
     resp = MagicMock()
     resp.status_code = status
     resp.json.return_value = json_data
@@ -41,31 +41,9 @@ def test_get_single_item(client):
  
 def test_get_missing_item_returns_404(client):
     assert client.get("/inventory/999").status_code == 404
-
-
-    # ------------------------------- POST --------------------------------------
-def test_post_adds_item(client):
-    payload = {"product_name": "Green Tea", "brands": "Leaf", "price": 5.5, "stock": 12}
-    response = client.post("/inventory", json=payload)
-    assert response.status_code == 201
-    body = response.get_json()
-    assert body["id"] == 4
-    assert client.get("/inventory/4").get_json()["product_name"] == "Green Tea"
  
  
-def test_post_missing_name_returns_400(client):
-    assert client.post("/inventory", json={"price": 1}).status_code == 400
- 
- 
-def test_post_invalid_price_returns_400(client):
-    response = client.post("/inventory", json={"product_name": "X", "price": -5})
-    assert response.status_code == 400
- 
- 
-def test_post_non_json_returns_400(client):
-    assert client.post("/inventory", data="not json").status_code == 400
-
-    # ------------------------------- POST --------------------------------------
+# ------------------------------- POST --------------------------------------
 def test_post_adds_item(client):
     payload = {"product_name": "Green Tea", "brands": "Leaf", "price": 5.5, "stock": 12}
     response = client.post("/inventory", json=payload)
@@ -88,7 +66,7 @@ def test_post_non_json_returns_400(client):
     assert client.post("/inventory", data="not json").status_code == 400
  
  
- # ------------------------------- PATCH -------------------------------------
+# ------------------------------- PATCH -------------------------------------
 def test_patch_updates_price_and_stock(client):
     response = client.patch("/inventory/1", json={"price": 9.99, "stock": 3})
     assert response.status_code == 200
